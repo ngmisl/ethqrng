@@ -1,0 +1,6 @@
+{
+  "ibm_quantum_token": "YOUR_IBM_QUANTUM_TOKEN_HERE",
+  "security_level": "MAXIMUM",
+  "entropy_mixing": true,
+  "quantum_shots": 1024
+}

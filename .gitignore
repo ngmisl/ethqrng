@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment and secrets
+.env
+config.json
+
+# Wallet files (NEVER commit these!)
+*.enc
+quantum_wallet_*.enc
+backup_wallet_*.enc
