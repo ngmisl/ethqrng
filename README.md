@@ -4,6 +4,23 @@
 
 This project generates Ethereum wallets using quantum random number generation (QRNG) from IBM Quantum computers, combined with additional security layers to ensure that even IBM Quantum cannot derive your private keys.
 
+## Quick Start
+
+```bash
+# 1. Install dependencies
+uv sync
+
+# 2. Configure your IBM Quantum token
+cp .env.example .env
+# Edit .env and add your IBM_QUANTUM_TOKEN
+
+# 3. Generate a quantum-secure wallet
+uv run python main.py
+
+# 4. View your wallet
+uv run python view_wallet.py
+```
+
 ## Features
 
 - **Quantum Random Number Generation**: Uses real IBM Quantum hardware for true randomness
@@ -12,6 +29,8 @@ This project generates Ethereum wallets using quantum random number generation (
 - **HKDF Key Derivation**: Cryptographically mixes multiple entropy sources
 - **Password-Encrypted Storage**: Wallets are encrypted with PBKDF2 before saving
 - **Cryptographic Proof**: Each wallet includes proof of entropy mixing
+- **Secure Wallet Viewer**: Beautiful TUI for viewing and managing encrypted wallets
+- **Memory-Safe Operations**: Secure cleanup of sensitive data from memory
 - **Air-Gap Compatible**: Can be run offline after quantum entropy generation
 
 ## Security Model
@@ -21,14 +40,14 @@ This implementation assumes that **IBM Quantum can observe** the random bits the
 ### Three-Layer Entropy Mixing
 
 ```
-1. Quantum Entropy (256 bits) � IBM CAN see this
-2. OS Entropy (256 bits)      � IBM CANNOT see this
-3. User Salt (256 bits)       � IBM CANNOT see this
+1. Quantum Entropy (256 bits) � IBM CAN see this
+2. OS Entropy (256 bits)      � IBM CANNOT see this
+3. User Salt (256 bits)       � IBM CANNOT see this
 
-          �
+          �
    HKDF-SHA256 (one-way)
-          �
-   Ethereum Private Key � IBM CANNOT derive this
+          �
+   Ethereum Private Key � IBM CANNOT derive this
 ```
 
 ### Security Guarantees
@@ -125,48 +144,48 @@ uv run python main.py -p "password" --user-salt "0123456789abcdef..."
 
 ```
 ======================================================================
-�  ULTRA-SECURE QUANTUM ETHEREUM WALLET GENERATOR
+�  ULTRA-SECURE QUANTUM ETHEREUM WALLET GENERATOR
 ======================================================================
 
 = Security Model: Defense Against IBM Observation
 Even if IBM Quantum stores your random bits,
 they cannot derive your private key.
 
-[1/8] <� Generating quantum entropy from IBM Quantum...
+[1/8] <� Generating quantum entropy from IBM Quantum...
      Using: ibm_brisbane
-    �  Quantum chunk 1/8: 10110101...
+    �  Quantum chunk 1/8: 10110101...
     ...
      Generated 32 bytes quantum entropy
-    �  Note: IBM Quantum CAN see these bits
+    �  Note: IBM Quantum CAN see these bits
 
 [2/8] = Generating OS entropy (invisible to IBM)...
      Generated 32 bytes OS entropy
     = This entropy is LOCAL ONLY (IBM cannot see)
 
 [3/8] = Mixing entropy sources with HKDF...
-    =� Total entropy: 96 bytes
+    =� Total entropy: 96 bytes
        - Quantum: 32 bytes (IBM can see)
        - OS:      32 bytes (IBM CANNOT see)
        - Salt:    32 bytes (IBM CANNOT see)
      Entropy mixed with HKDF-SHA256
-    � IBM cannot derive this even with quantum entropy!
+    � IBM cannot derive this even with quantum entropy!
 
 [4/8] = Deriving Ethereum key (local only)...
      Ethereum address: 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
     = Private key derived (IBM cannot compute this)
 
-[5/8] =�  Creating security proof...
+[5/8] =�  Creating security proof...
 [6/8] = Encrypting wallet...
-[7/8] =� Saving encrypted wallet...
-[8/8] =� Creating backup...
+[7/8] =� Saving encrypted wallet...
+[8/8] =� Creating backup...
 
 ======================================================================
  ULTRA-SECURE WALLET GENERATED!
 ======================================================================
 
-=� Ethereum Address: 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+=� Ethereum Address: 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
 = Private Key: 0x1234567890abcdef...
-=� Encrypted File: quantum_wallet_enhanced.enc
+=� Encrypted File: quantum_wallet_enhanced.enc
 ```
 
 ## Output Files
@@ -203,6 +222,93 @@ Each encrypted wallet contains:
     "note": "IBM Quantum cannot derive private key from quantum entropy alone"
   }
 }
+```
+
+## Viewing Your Wallet
+
+The project includes a secure TUI (Terminal User Interface) for viewing and managing your encrypted wallets.
+
+### Secure Wallet Viewer
+
+```bash
+uv run python view_wallet.py
+```
+
+### Features
+
+- **🔐 Secure Password Input** - Hidden password entry
+- **📂 Auto-detect Wallets** - Finds all `.enc` files automatically
+- **🎨 Beautiful TUI** - Rich terminal interface with colors and tables
+- **📋 Copy to Clipboard** - Easy copying of address and private key
+- **⏱️ Auto-clear Clipboard** - Private key auto-clears after 30 seconds
+- **🧹 Memory-safe** - Securely clears sensitive data from memory
+- **🛡️ Security Proof Display** - View entropy mixing verification
+
+### Interactive Menu
+
+Once decrypted, you can:
+
+1. **Copy Address** - Copy your Ethereum address to clipboard
+2. **Show Full Private Key** - Display private key in terminal (with confirmation)
+3. **Copy Private Key** - Copy to clipboard with 30-second auto-clear
+4. **Show Security Details** - View entropy hashes and security proofs
+5. **Quit** - Exit with secure memory cleanup
+
+### Security Features
+
+The wallet viewer implements several security measures:
+
+- **Hidden password input** - Password never displayed on screen
+- **Memory scrubbing** - Attempts to zero out sensitive data in memory
+- **Auto-clear clipboard** - Private keys automatically removed after 30s
+- **Secure cleanup** - Garbage collection and memory clearing on exit
+- **No file writing** - View-only, never writes decrypted data to disk
+
+### Example Session
+
+```bash
+$ uv run python view_wallet.py
+
+⚛️  Quantum Ethereum Wallet Viewer
+─────────────────────────────────────
+Secure Decryption & Viewing Tool
+
+📂 Found wallet: quantum_wallet_enhanced.enc
+
+🔐 Enter wallet password
+Password: ********
+
+🔓 Decrypting wallet...
+✅ Wallet decrypted successfully!
+
+┌─────────────────────────────────────────────────────────┐
+│           🔐 Quantum Ethereum Wallet Viewer             │
+│           Secure • Memory-Safe • Quantum-Enhanced       │
+└─────────────────────────────────────────────────────────┘
+
+╭─────────────────────────────────────────────────────────╮
+│ Version        2.0-enhanced-security                    │
+│ Created        2025-10-28T10:30:45                      │
+│                                                          │
+│ 📍 Address     0x742d35Cc6634C0532925a3b844Bc9e7595f... │
+│ 🔑 Private Key 0x1234567...890abcdef (masked)           │
+│ 🔓 Public Key  0xabcdef0...123456789 (masked)           │
+╰─────────────────────────────────────────────────────────╯
+
+╭─────────────── 🛡️  Security Proof ───────────────╮
+│ ✅ Entropy Sources: 3                             │
+│ ✅ Mixing: HKDF-SHA256                            │
+│ ✅ IBM Cannot Derive: True                        │
+╰───────────────────────────────────────────────────╯
+
+Actions:
+  1 - Copy Address to Clipboard
+  2 - Show Full Private Key
+  3 - Copy Private Key to Clipboard (30s auto-clear)
+  4 - Show Security Details
+  q - Quit (secure cleanup)
+
+Select action: _
 ```
 
 ## How It Works
@@ -275,12 +381,19 @@ Before using this wallet for real funds:
 
 ## Dependencies
 
+### Core Dependencies
+
 - **qiskit** - IBM's quantum computing framework
 - **qiskit-ibm-runtime** - IBM Quantum cloud access
 - **eth-account** - Ethereum account management
 - **web3** - Ethereum blockchain interaction
 - **cryptography** - HKDF, PBKDF2, and Fernet encryption
 - **python-dotenv** - Environment variable management
+
+### Wallet Viewer Dependencies
+
+- **rich** - Beautiful terminal UI formatting and colors
+- **pyperclip** - Cross-platform clipboard access
 
 ## FAQ
 
@@ -316,7 +429,7 @@ After quantum entropy generation, you could theoretically disconnect and complet
 
 ## Disclaimer
 
-**� IMPORTANT SECURITY NOTICE**
+**� IMPORTANT SECURITY NOTICE**
 
 - This software is provided "AS IS" without warranty of any kind
 - The authors are not responsible for any loss of funds
@@ -347,4 +460,16 @@ For issues or questions:
 
 ---
 
-**Built with quantum randomness and cryptographic rigor** �=
+**Built with quantum randomness and cryptographic rigor** �=
+
+## Credits
+
+**Made with ❤️ by [Aunova](https://aunova.net)**
+
+### Support This Project
+
+If you find this project useful, consider supporting its development:
+
+**[☕ Donate](https://fourzerofour.fkey.id)**
+
+Your support helps maintain and improve this project!
