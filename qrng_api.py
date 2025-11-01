@@ -122,13 +122,14 @@ class X402PaymentVerifier:
         network: str = DEFAULT_NETWORK,
     ) -> Dict[str, Any]:
         """
-        Verify x402 payment headers against the facilitator
+        Verify x402 payment with facilitator - PRODUCTION
 
         Expected headers:
-        - X-Payment-Signature: Signature from user's wallet
+        - X-Payment-Signature: Payment signature from x402 facilitator
         - X-Payment-Nonce: Unique nonce to prevent replay attacks
         - X-Payment-Timestamp: Unix timestamp
         - X-Payment-Chain: Blockchain network (base, solana, etc)
+        - X-Payment-Id: Payment ID from facilitator (optional)
         """
 
         # Extract payment headers
@@ -136,6 +137,7 @@ class X402PaymentVerifier:
         nonce = request.headers.get("X-Payment-Nonce")
         timestamp = request.headers.get("X-Payment-Timestamp")
         chain = request.headers.get("X-Payment-Chain", network)
+        payment_id = request.headers.get("X-Payment-Id")
 
         if not all([signature, nonce, timestamp]):
             raise HTTPException(
@@ -147,14 +149,15 @@ class X402PaymentVerifier:
                     "price": f"${required_price}",
                     "receiver": self.receiver_address,
                     "network": network,
+                    "facilitator": self.facilitator_url,
                 }
             )
 
-        # Check timestamp (must be within 5 minutes)
+        # Check timestamp (must be within 10 minutes for production reliability)
         try:
             request_time = int(timestamp)
             current_time = int(time.time())
-            if abs(current_time - request_time) > 300:  # 5 minutes
+            if abs(current_time - request_time) > 600:  # 10 minutes
                 raise HTTPException(
                     status_code=402,
                     detail={"error": "Payment expired", "message": "Timestamp too old or in future"}
@@ -172,27 +175,59 @@ class X402PaymentVerifier:
                 detail={"error": "Payment already used", "message": "Nonce has been used before"}
             )
 
-        # Verify payment with facilitator
+        # Verify payment with x402 facilitator
         try:
+            verification_payload = {
+                "signature": signature,
+                "nonce": nonce,
+                "timestamp": request_time,
+                "chain": chain,
+                "receiver": self.receiver_address,
+                "amount": required_price,
+                "endpoint": str(request.url.path),
+            }
+
+            # Include payment ID if provided
+            if payment_id:
+                verification_payload["payment_id"] = payment_id
+
             verification_response = await self.client.post(
-                f"{self.facilitator_url}/verify",
-                json={
-                    "signature": signature,
-                    "nonce": nonce,
-                    "timestamp": request_time,
-                    "chain": chain,
-                    "receiver": self.receiver_address,
-                    "amount": required_price,
-                    "path": str(request.url.path),
+                f"{self.facilitator_url}/verify-payment",
+                json=verification_payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "QRNG-API/1.0",
                 }
             )
 
             if verification_response.status_code == 200:
+                verification_data = verification_response.json()
+
+                # Verify the payment data matches our requirements
+                if verification_data.get("valid") != True:
+                    raise HTTPException(
+                        status_code=402,
+                        detail={
+                            "error": "Payment invalid",
+                            "message": "Payment verification failed",
+                        }
+                    )
+
+                if abs(verification_data.get("amount", 0) - required_price) > 0.0001:
+                    raise HTTPException(
+                        status_code=402,
+                        detail={
+                            "error": "Payment amount mismatch",
+                            "message": f"Expected ${required_price}, got ${verification_data.get('amount')}",
+                        }
+                    )
+
                 # Mark nonce as used
                 self.used_nonces[nonce] = current_time
                 self._cleanup_old_nonces()
 
-                return verification_response.json()
+                return verification_data
+
             elif verification_response.status_code == 402:
                 error_data = verification_response.json()
                 raise HTTPException(
@@ -200,7 +235,7 @@ class X402PaymentVerifier:
                     detail={
                         "error": "Payment verification failed",
                         "message": error_data.get("message", "Invalid payment"),
-                        "facilitator_response": error_data,
+                        "details": error_data.get("details"),
                     }
                 )
             else:
@@ -208,7 +243,7 @@ class X402PaymentVerifier:
                     status_code=500,
                     detail={
                         "error": "Facilitator error",
-                        "message": "Could not verify payment with facilitator"
+                        "message": f"Facilitator returned status {verification_response.status_code}"
                     }
                 )
 
@@ -217,7 +252,7 @@ class X402PaymentVerifier:
                 status_code=500,
                 detail={
                     "error": "Network error",
-                    "message": f"Could not connect to payment facilitator: {str(e)}"
+                    "message": f"Could not connect to x402 facilitator: {str(e)}"
                 }
             )
 

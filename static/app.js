@@ -95,64 +95,125 @@ function closePaymentModal() {
     currentPaymentContext = null;
 }
 
-// Process Payment (x402 Gasless/Signless)
+// Process Payment (x402 Gasless/Signless) - PRODUCTION
 async function processPayment() {
     if (!currentPaymentContext) return;
 
     closePaymentModal();
-    showLoading('Processing payment via x402...');
+    showLoading('Initiating payment via x402 facilitator...');
 
     try {
-        // Generate payment nonce and timestamp
-        const nonce = generateNonce();
-        const timestamp = Math.floor(Date.now() / 1000);
-
-        // For gasless/signless x402, we create a simplified payment signature
-        // The x402 facilitator handles the actual on-chain transaction
-        const paymentData = {
+        // Step 1: Request payment from x402 facilitator
+        const paymentRequest = await createX402Payment({
+            amount: currentPaymentContext.price,
+            receiver: apiInfo.payment.receiver,
+            chain: apiInfo.payment.network,
             endpoint: currentPaymentContext.endpoint,
-            price: currentPaymentContext.price,
-            nonce: nonce,
-            timestamp: timestamp,
-            chain: apiInfo?.payment?.network || 'base'
-        };
+        });
 
-        // Generate a simple signature (in production, this would be handled by x402 SDK)
-        const signature = await generateX402Signature(paymentData);
+        showLoading('Processing payment on-chain...');
 
-        // Store payment context for the actual API call
+        // Step 2: Wait for facilitator to process (gasless transaction)
+        const paymentProof = await waitForPaymentConfirmation(paymentRequest.paymentId);
+
+        showLoading('Verifying payment...');
+
+        // Step 3: Store payment headers for API call
         currentPaymentContext.headers = {
-            'X-Payment-Signature': signature,
-            'X-Payment-Nonce': nonce,
-            'X-Payment-Timestamp': timestamp.toString(),
-            'X-Payment-Chain': apiInfo?.payment?.network || 'base'
+            'X-Payment-Signature': paymentProof.signature,
+            'X-Payment-Nonce': paymentProof.nonce,
+            'X-Payment-Timestamp': paymentProof.timestamp.toString(),
+            'X-Payment-Chain': apiInfo.payment.network,
+            'X-Payment-Id': paymentProof.paymentId,
         };
 
-        // Proceed with the API call
+        // Step 4: Proceed with the actual API call
         await currentPaymentContext.callback();
 
     } catch (error) {
         hideLoading();
+        console.error('Payment error:', error);
         showError('Payment failed: ' + error.message);
     }
 }
 
-// Generate x402 Payment Signature (Simplified for Demo)
-async function generateX402Signature(paymentData) {
-    // In production, this would:
-    // 1. Call x402 SDK to initiate gasless payment
-    // 2. Get signed payment proof from facilitator
-    // 3. Return the signature
+// Create x402 Payment via Facilitator - PRODUCTION
+async function createX402Payment({ amount, receiver, chain, endpoint }) {
+    const facilitatorUrl = apiInfo.payment.facilitator;
 
-    // For demo/testing, we create a mock signature
-    const message = JSON.stringify(paymentData);
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    try {
+        const response = await fetch(`${facilitatorUrl}/create-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                amount: amount,
+                receiver: receiver,
+                chain: chain,
+                metadata: {
+                    endpoint: endpoint,
+                    service: 'qrng-api',
+                }
+            })
+        });
 
-    return '0x' + hashHex;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create payment');
+        }
+
+        const data = await response.json();
+        return {
+            paymentId: data.paymentId,
+            paymentUrl: data.paymentUrl, // URL for user to complete payment if needed
+            status: data.status,
+        };
+    } catch (error) {
+        console.error('x402 payment creation failed:', error);
+        throw new Error(`Failed to create payment: ${error.message}`);
+    }
+}
+
+// Wait for Payment Confirmation from x402 Facilitator - PRODUCTION
+async function waitForPaymentConfirmation(paymentId, maxAttempts = 30) {
+    const facilitatorUrl = apiInfo.payment.facilitator;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch(`${facilitatorUrl}/payment-status/${paymentId}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to check payment status');
+            }
+
+            const status = await response.json();
+
+            if (status.status === 'confirmed') {
+                // Payment confirmed, return proof
+                return {
+                    paymentId: paymentId,
+                    signature: status.signature,
+                    nonce: status.nonce,
+                    timestamp: status.timestamp,
+                    txHash: status.txHash,
+                };
+            } else if (status.status === 'failed') {
+                throw new Error('Payment failed: ' + (status.error || 'Unknown error'));
+            }
+
+            // Payment still pending, wait and retry
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            attempts++;
+
+        } catch (error) {
+            console.error('Payment status check failed:', error);
+            throw error;
+        }
+    }
+
+    throw new Error('Payment timeout: Transaction not confirmed within expected time');
 }
 
 // Generate Random Nonce
@@ -380,28 +441,29 @@ window.QRNG_API = {
         return await this._call('/qrng/entropy', { bits });
     },
 
-    // Internal API call method
+    // Internal API call method - PRODUCTION
     async _call(endpoint, body) {
         const price = apiInfo?.endpoints?.[endpoint]?.price || 0.01;
-        const nonce = generateNonce();
-        const timestamp = Math.floor(Date.now() / 1000);
 
-        const paymentData = {
-            endpoint,
-            price,
-            nonce,
-            timestamp,
-            chain: apiInfo?.payment?.network || 'base'
-        };
+        // Step 1: Create payment with x402 facilitator
+        const paymentRequest = await createX402Payment({
+            amount: price,
+            receiver: apiInfo.payment.receiver,
+            chain: apiInfo.payment.network,
+            endpoint: endpoint,
+        });
 
-        const signature = await generateX402Signature(paymentData);
+        // Step 2: Wait for payment confirmation
+        const paymentProof = await waitForPaymentConfirmation(paymentRequest.paymentId);
 
+        // Step 3: Call API with payment proof
         const headers = {
             'Content-Type': 'application/json',
-            'X-Payment-Signature': signature,
-            'X-Payment-Nonce': nonce,
-            'X-Payment-Timestamp': timestamp.toString(),
-            'X-Payment-Chain': apiInfo?.payment?.network || 'base'
+            'X-Payment-Signature': paymentProof.signature,
+            'X-Payment-Nonce': paymentProof.nonce,
+            'X-Payment-Timestamp': paymentProof.timestamp.toString(),
+            'X-Payment-Chain': apiInfo.payment.network,
+            'X-Payment-Id': paymentProof.paymentId,
         };
 
         const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -411,7 +473,8 @@ window.QRNG_API = {
         });
 
         if (!response.ok) {
-            throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+            const error = await response.json();
+            throw new Error(error.detail?.message || `API call failed: ${response.status}`);
         }
 
         return await response.json();
