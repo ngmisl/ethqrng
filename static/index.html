@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRNG API - Quantum Random Number Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🌌 Quantum RNG API</h1>
+                <p class="subtitle">True quantum randomness powered by IBM Quantum computers</p>
+                <div class="payment-badge">
+                    <span class="badge">Pay with x402</span>
+                    <span class="network-badge" id="networkBadge">Base Network</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- API Status -->
+            <section class="status-section">
+                <div class="status-card">
+                    <div class="status-indicator" id="statusIndicator">
+                        <span class="status-dot"></span>
+                        <span id="statusText">Checking...</span>
+                    </div>
+                    <div class="status-info">
+                        <div class="info-item">
+                            <span class="label">Quantum Service:</span>
+                            <span id="quantumStatus">—</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Payment Network:</span>
+                            <span id="paymentNetwork">—</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Facilitator:</span>
+                            <span id="facilitator">—</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <h2>Generate Quantum Random Numbers</h2>
+                <div class="actions-grid">
+                    <!-- Random Bytes -->
+                    <div class="action-card">
+                        <div class="card-header">
+                            <h3>🎲 Random Bytes</h3>
+                            <span class="price">$0.01</span>
+                        </div>
+                        <p class="card-description">Generate quantum random bytes in various formats</p>
+                        <div class="form-group">
+                            <label for="bytesLength">Length (bytes):</label>
+                            <input type="number" id="bytesLength" min="1" max="1024" value="32">
+                        </div>
+                        <div class="form-group">
+                            <label for="bytesFormat">Format:</label>
+                            <select id="bytesFormat">
+                                <option value="hex">Hex</option>
+                                <option value="base64">Base64</option>
+                                <option value="base64url">Base64URL</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateBytes()">Generate</button>
+                        <div class="result" id="bytesResult"></div>
+                    </div>
+
+                    <!-- Random Integers -->
+                    <div class="action-card">
+                        <div class="card-header">
+                            <h3>🔢 Random Integers</h3>
+                            <span class="price">$0.02</span>
+                        </div>
+                        <p class="card-description">Generate random integers in a specified range</p>
+                        <div class="form-group">
+                            <label for="intCount">Count:</label>
+                            <input type="number" id="intCount" min="1" max="100" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="intMin">Min Value:</label>
+                            <input type="number" id="intMin" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="intMax">Max Value:</label>
+                            <input type="number" id="intMax" value="100">
+                        </div>
+                        <button class="btn btn-primary" onclick="generateIntegers()">Generate</button>
+                        <div class="result" id="integersResult"></div>
+                    </div>
+
+                    <!-- UUID -->
+                    <div class="action-card">
+                        <div class="card-header">
+                            <h3>🆔 UUID v4</h3>
+                            <span class="price">$0.01</span>
+                        </div>
+                        <p class="card-description">Generate quantum-based UUID for unique identifiers</p>
+                        <button class="btn btn-primary" onclick="generateUUID()">Generate UUID</button>
+                        <div class="result" id="uuidResult"></div>
+                    </div>
+
+                    <!-- High Entropy -->
+                    <div class="action-card">
+                        <div class="card-header">
+                            <h3>🔐 High Entropy Seed</h3>
+                            <span class="price">$0.05</span>
+                        </div>
+                        <p class="card-description">Generate cryptographic-grade entropy for keys</p>
+                        <div class="form-group">
+                            <label for="entropyBits">Bits:</label>
+                            <select id="entropyBits">
+                                <option value="128">128 bits</option>
+                                <option value="256" selected>256 bits</option>
+                                <option value="512">512 bits</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="generateEntropy()">Generate</button>
+                        <div class="result" id="entropyResult"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How it Works -->
+            <section class="info-section">
+                <h2>How It Works</h2>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="icon">🔬</div>
+                        <h3>Quantum Randomness</h3>
+                        <p>Uses real IBM Quantum computers (not simulators) to generate truly unpredictable random numbers based on quantum mechanics.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon">💰</div>
+                        <h3>x402 Payments</h3>
+                        <p>Pay-per-use with USDC via x402 protocol. Gasless and signless - just click and pay. No wallet connection needed.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon">🔒</div>
+                        <h3>Enhanced Security</h3>
+                        <p>Multi-layer entropy mixing combines quantum randomness with OS entropy for maximum security and unpredictability.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="icon">🤖</div>
+                        <h3>AI-Friendly</h3>
+                        <p>Designed for both humans and AI agents. Simple REST API with JSON responses. Perfect for ML, gaming, and crypto applications.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Reference -->
+            <section class="api-section">
+                <h2>API Reference</h2>
+                <div class="api-card">
+                    <h3>For Developers & AI Agents</h3>
+                    <p>All endpoints require x402 payment. Send payment headers with each request:</p>
+                    <div class="code-block">
+                        <pre><code>Headers:
+  X-Payment-Signature: &lt;signature&gt;
+  X-Payment-Nonce: &lt;nonce&gt;
+  X-Payment-Timestamp: &lt;timestamp&gt;
+  X-Payment-Chain: base
+
+POST /qrng/bytes
+POST /qrng/integers
+POST /qrng/uuid
+POST /qrng/entropy</code></pre>
+                    </div>
+                    <button class="btn btn-secondary" onclick="window.location.href='/docs'">View Full API Docs</button>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer>
+                <div class="footer-content">
+                    <p>Powered by IBM Quantum & x402 Protocol</p>
+                    <div class="footer-links">
+                        <a href="/docs" target="_blank">API Documentation</a>
+                        <a href="https://x402.rs" target="_blank">x402 Protocol</a>
+                        <a href="https://quantum.ibm.com" target="_blank">IBM Quantum</a>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p id="loadingText">Processing quantum computation...</p>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <h3>💰 Payment Required</h3>
+            <p id="paymentMessage">This operation requires payment via x402.</p>
+            <div class="payment-details">
+                <div class="detail-row">
+                    <span>Amount:</span>
+                    <strong id="paymentAmount">$0.01</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Network:</span>
+                    <strong id="paymentChain">Base</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Receiver:</span>
+                    <strong id="paymentReceiver">—</strong>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="processPayment()">Pay & Continue</button>
+                <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

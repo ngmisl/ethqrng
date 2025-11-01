@@ -80,17 +80,35 @@ X402_DEFAULT_NETWORK=base
 ### 3. Start the Server
 
 ```bash
+# Quick start with auto-setup
+./run_qrng_api.sh
+
+# Or manually
 python qrng_api.py
 ```
 
-The API will be available at `http://localhost:8000`
+The server will start at `http://localhost:8000`
 
-### 4. View API Documentation
+### 4. Access the Interface
 
-Open your browser:
-- **Interactive Docs**: http://localhost:8000/docs
-- **Alternative Docs**: http://localhost:8000/redoc
-- **API Info**: http://localhost:8000/
+**Web Frontend (For Humans):**
+- Open http://localhost:8000 in your browser
+- Beautiful UI with gasless/signless x402 payments
+- Click, pay, and get quantum random numbers instantly
+
+**API Documentation (For Developers):**
+- Interactive Swagger UI: http://localhost:8000/docs
+- ReDoc Documentation: http://localhost:8000/redoc
+- API Info: http://localhost:8000/ (JSON response)
+
+**JavaScript API (For AI Agents):**
+```javascript
+// In browser console or scripts
+await QRNG_API.generateBytes(32, 'hex')
+await QRNG_API.generateIntegers(10, 0, 100)
+await QRNG_API.generateUUID()
+await QRNG_API.generateEntropy(256)
+```
 
 ## API Endpoints
 

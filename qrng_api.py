@@ -25,8 +25,9 @@ from functools import wraps
 
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Depends, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -67,6 +68,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files (HTML frontend)
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
 # ==================== Models ====================
@@ -344,10 +350,20 @@ qrng_service = QuantumRNGService()
 
 # ==================== API Endpoints ====================
 
-@app.get("/")
-async def root():
-    """API information and pricing"""
-    return {
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """Serve HTML frontend or API information based on Accept header"""
+    accept_header = request.headers.get("accept", "")
+
+    # If request is from browser (HTML), serve the frontend
+    if "text/html" in accept_header:
+        html_path = os.path.join(static_path, "index.html")
+        if os.path.exists(html_path):
+            with open(html_path, "r") as f:
+                return HTMLResponse(content=f.read())
+
+    # Otherwise return JSON API info
+    return JSONResponse({
         "name": "QRNG API",
         "description": "Quantum Random Number Generation powered by IBM Quantum",
         "version": "1.0.0",
@@ -359,7 +375,7 @@ async def root():
         },
         "endpoints": PRICING,
         "documentation": "/docs",
-    }
+    })
 
 
 @app.get("/health")
